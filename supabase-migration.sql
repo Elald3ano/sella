@@ -44,7 +44,7 @@ RETURNS boolean AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM businesses
-    WHERE id = business_id::uuid AND user_id = auth.uid()
+    WHERE id = business_id AND user_id = auth.uid()
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -80,8 +80,12 @@ CREATE POLICY "Dueño actualiza solicitud" ON stamp_requests FOR UPDATE USING (i
 
 -- redemptions
 CREATE POLICY "Admin ve todos los canjes" ON redemptions FOR SELECT USING (is_admin());
-CREATE POLICY "Dueño ve sus canjes" ON redemptions FOR SELECT USING (is_business_owner(program.business_id::text));
-CREATE POLICY "Dueño crea canje" ON redemptions FOR INSERT WITH CHECK (is_business_owner(program.business_id::text));
+CREATE POLICY "Dueño ve sus canjes" ON redemptions FOR SELECT USING (
+  is_business_owner((SELECT business_id::text FROM programs WHERE id = redemptions.program_id))
+);
+CREATE POLICY "Dueño crea canje" ON redemptions FOR INSERT WITH CHECK (
+  is_business_owner((SELECT business_id::text FROM programs WHERE id = redemptions.program_id))
+);
 
 -- subscriptions
 CREATE POLICY "Admin ve todas las subscripciones" ON subscriptions FOR SELECT USING (is_admin());
@@ -142,8 +146,8 @@ CREATE TRIGGER trigger_normalize_phone
 -- ============================================================
 
 -- Función: aprobar solicitud de sello
-CREATE OR REPLACE FUNCTION approve_stamp_request(request_id uuid)
-RETURNS json AS $$
+CREATE OR REPLACE FUNCTION approve_stamp_request(request_id text)
+RETURNS json AS $
 DECLARE
   req record;
   prog record;
@@ -183,8 +187,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Función: canjear premio
-CREATE OR REPLACE FUNCTION redeem(customer_id uuid, program_id uuid)
-RETURNS json AS $$
+CREATE OR REPLACE FUNCTION redeem(customer_id text, program_id text)
+RETURNS json AS $
 DECLARE
   prog record;
   stamp_count int;
@@ -221,8 +225,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Función: historial del cliente con alertas
-CREATE OR REPLACE FUNCTION customer_history(cust_id uuid)
-RETURNS json AS $$
+CREATE OR REPLACE FUNCTION customer_history(cust_id text)
+RETURNS json AS $
 DECLARE
   cust record;
   biz record;
