@@ -1,9 +1,0 @@
-{
-  "buildCommand": "cd packages/web && npm install && npm run build",
-  "outputDirectory": "packages/web/dist",
-  "framework": "vite",
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://api.sella.co/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
