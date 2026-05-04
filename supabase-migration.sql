@@ -147,7 +147,7 @@ CREATE TRIGGER trigger_normalize_phone
 
 -- Función: aprobar solicitud de sello
 CREATE OR REPLACE FUNCTION approve_stamp_request(request_id text)
-RETURNS json AS $
+RETURNS json AS $$
 DECLARE
   req record;
   prog record;
@@ -188,7 +188,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Función: canjear premio
 CREATE OR REPLACE FUNCTION redeem(customer_id text, program_id text)
-RETURNS json AS $
+RETURNS json AS $$
 DECLARE
   prog record;
   stamp_count int;
@@ -226,7 +226,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Función: historial del cliente con alertas
 CREATE OR REPLACE FUNCTION customer_history(cust_id text)
-RETURNS json AS $
+RETURNS json AS $$
 DECLARE
   cust record;
   biz record;
