@@ -3,6 +3,18 @@
 -- Ejecutar en SQL Editor de Supabase
 -- ============================================================
 
+-- 0. EXTENSIONES
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Agregar DEFAULT gen_random_uuid() a todas las columnas id
+ALTER TABLE businesses ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE programs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE customers ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE stamps ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE stamp_requests ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE redemptions ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE subscriptions ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+
 -- 1. SCHEMA CHANGES
 -- ============================================================
 
@@ -311,8 +323,8 @@ RETURNS json AS $$
 DECLARE
   new_business record;
 BEGIN
-  INSERT INTO businesses (name, phone, type, email, user_id, plan, created_at, updated_at)
-  VALUES (p_name, p_phone, p_type, p_email, auth.uid(), 'trial', now(), now())
+  INSERT INTO businesses (id, name, phone, type, email, user_id, plan, created_at, updated_at)
+  VALUES (gen_random_uuid()::text, p_name, p_phone, p_type, p_email, auth.uid(), 'trial', now(), now())
   RETURNING * INTO new_business;
 
   RETURN json_build_object(
