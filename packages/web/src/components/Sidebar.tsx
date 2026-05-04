@@ -1,5 +1,9 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 
+interface Props {
+  onLogout: () => void;
+}
+
 const NAV_ITEMS = [
   { path: '/panel', label: 'Dashboard', icon: '📊' },
   { path: '/panel/programas', label: 'Programas', icon: '⭐' },
@@ -7,12 +11,13 @@ const NAV_ITEMS = [
   { path: '/panel/campanas', label: 'Campañas', icon: '💬' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onLogout }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem('sella_business');
+    onLogout();
     navigate('/');
   };
 

@@ -1,9 +1,10 @@
 interface Props {
   trialEndsAt: string | null;
   plan: string;
+  bizName: string;
 }
 
-export default function PaymentBanner({ trialEndsAt, plan }: Props) {
+export default function PaymentBanner({ trialEndsAt, plan, bizName }: Props) {
   if (plan !== 'trial') return null;
   if (!trialEndsAt) return null;
 
@@ -14,7 +15,6 @@ export default function PaymentBanner({ trialEndsAt, plan }: Props) {
 
   const supportPhone = import.meta.env.VITE_SUPPORT_PHONE || '573001234567';
   const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'hola@sella.co';
-  const bizName = encodeURIComponent(localStorage.getItem('sella_business') ? JSON.parse(localStorage.getItem('sella_business')!).name : '');
   const waMsg = encodeURIComponent(`Hola Sella, quiero activar mi plan. Mi negocio es ${bizName || '[nombre]'}.`);
   const emailSubject = encodeURIComponent('Activación de plan - Sella');
 

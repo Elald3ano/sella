@@ -7,8 +7,6 @@ import ProgramSetup from './pages/ProgramSetup';
 import Customers from './pages/Customers';
 import Campaigns from './pages/Campaigns';
 import Layout from './components/Layout';
-import SetPin from './pages/SetPin';
-import CompleteProfile from './pages/CompleteProfile';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminLayout from './components/AdminLayout';
@@ -19,8 +17,6 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/registro" element={<Register />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/panel/configurar-pin" element={<SetPin />} />
-      <Route path="/panel/completar-perfil" element={<CompleteProfile />} />
       <Route element={<Layout />}>
         <Route path="/panel" element={<Dashboard />} />
         <Route path="/panel/programas" element={<ProgramSetup />} />
