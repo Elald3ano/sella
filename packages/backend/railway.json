@@ -1,0 +1,10 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "cd packages/backend && npm install && npx prisma generate"
+  },
+  "deploy": {
+    "startCommand": "cd packages/backend && npx tsx src/index.ts",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}

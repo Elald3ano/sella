@@ -1,0 +1,25 @@
+{
+  "name": "sella",
+  "private": true,
+  "workspaces": [
+    "packages/backend",
+    "packages/web",
+    "packages/pwa"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev -w packages/backend",
+    "dev:web": "npm run dev -w packages/web",
+    "dev:pwa": "npm run dev -w packages/pwa",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\" \"npm run dev:pwa\"",
+    "build:web": "npm run build -w packages/web",
+    "build:pwa": "npm run build -w packages/pwa",
+    "build": "npm run build:web && npm run build:pwa",
+    "db:generate": "npm run db:generate -w packages/backend",
+    "db:push": "npm run db:push -w packages/backend",
+    "db:studio": "npm run db:studio -w packages/backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  }
+}
