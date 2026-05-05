@@ -1,4 +1,0 @@
-{
-  "buildCommand": "cd packages/web && npx vite build",
-  "outputDirectory": "packages/web/dist"
-}
