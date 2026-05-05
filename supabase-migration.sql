@@ -62,48 +62,73 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- businesses: admin ve todos, dueño solo su negocio
+DROP POLICY IF EXISTS "Admin ve todos los negocios" ON businesses;
 CREATE POLICY "Admin ve todos los negocios" ON businesses FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Dueño ve su negocio" ON businesses;
 CREATE POLICY "Dueño ve su negocio" ON businesses FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Dueño actualiza su negocio" ON businesses;
 CREATE POLICY "Dueño actualiza su negocio" ON businesses FOR UPDATE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Registro público" ON businesses;
 CREATE POLICY "Registro público" ON businesses FOR INSERT WITH CHECK (true);
 
 -- programs: admin ve todos, dueño los suyos
+DROP POLICY IF EXISTS "Admin ve todos los programas" ON programs;
 CREATE POLICY "Admin ve todos los programas" ON programs FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Dueño ve sus programas" ON programs;
 CREATE POLICY "Dueño ve sus programas" ON programs FOR SELECT USING (is_business_owner(business_id::text));
+DROP POLICY IF EXISTS "Dueño crea programas" ON programs;
 CREATE POLICY "Dueño crea programas" ON programs FOR INSERT WITH CHECK (is_business_owner(business_id::text));
+DROP POLICY IF EXISTS "Dueño actualiza programas" ON programs;
 CREATE POLICY "Dueño actualiza programas" ON programs FOR UPDATE USING (is_business_owner(business_id::text));
 
 -- customers: admin ve todos, dueño los suyos
+DROP POLICY IF EXISTS "Admin ve todos los clientes" ON customers;
 CREATE POLICY "Admin ve todos los clientes" ON customers FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Dueño ve sus clientes" ON customers;
 CREATE POLICY "Dueño ve sus clientes" ON customers FOR SELECT USING (is_business_owner(business_id::text));
+DROP POLICY IF EXISTS "Cliente se registra" ON customers;
 CREATE POLICY "Cliente se registra" ON customers FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Cliente se actualiza" ON customers;
 CREATE POLICY "Cliente se actualiza" ON customers FOR UPDATE USING (true);
 
 -- stamps: admin ve todos, dueño los suyos
+DROP POLICY IF EXISTS "Admin ve todos los sellos" ON stamps;
 CREATE POLICY "Admin ve todos los sellos" ON stamps FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Dueño ve sus sellos" ON stamps;
 CREATE POLICY "Dueño ve sus sellos" ON stamps FOR SELECT USING (is_business_owner(business_id::text));
+DROP POLICY IF EXISTS "Crear sello" ON stamps;
 CREATE POLICY "Crear sello" ON stamps FOR INSERT WITH CHECK (is_business_owner(business_id::text));
 
 -- stamp_requests
+DROP POLICY IF EXISTS "Admin ve todas las solicitudes" ON stamp_requests;
 CREATE POLICY "Admin ve todas las solicitudes" ON stamp_requests FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Dueño ve sus solicitudes" ON stamp_requests;
 CREATE POLICY "Dueño ve sus solicitudes" ON stamp_requests FOR SELECT USING (is_business_owner(business_id::text));
+DROP POLICY IF EXISTS "Cliente crea solicitud" ON stamp_requests;
 CREATE POLICY "Cliente crea solicitud" ON stamp_requests FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Dueño actualiza solicitud" ON stamp_requests;
 CREATE POLICY "Dueño actualiza solicitud" ON stamp_requests FOR UPDATE USING (is_business_owner(business_id::text));
 
 -- redemptions
+DROP POLICY IF EXISTS "Admin ve todos los canjes" ON redemptions;
 CREATE POLICY "Admin ve todos los canjes" ON redemptions FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Dueño ve sus canjes" ON redemptions;
 CREATE POLICY "Dueño ve sus canjes" ON redemptions FOR SELECT USING (
   is_business_owner((SELECT business_id::text FROM programs WHERE id = redemptions.program_id))
 );
+DROP POLICY IF EXISTS "Dueño crea canje" ON redemptions;
 CREATE POLICY "Dueño crea canje" ON redemptions FOR INSERT WITH CHECK (
   is_business_owner((SELECT business_id::text FROM programs WHERE id = redemptions.program_id))
 );
 
 -- subscriptions
+DROP POLICY IF EXISTS "Admin ve todas las subscripciones" ON subscriptions;
 CREATE POLICY "Admin ve todas las subscripciones" ON subscriptions FOR SELECT USING (is_admin());
+DROP POLICY IF EXISTS "Dueño ve su subscripción" ON subscriptions;
 CREATE POLICY "Dueño ve su subscripción" ON subscriptions FOR SELECT USING (is_business_owner(business_id::text));
 
 -- admin_users
+DROP POLICY IF EXISTS "Solo admin ve admin_users" ON admin_users;
 CREATE POLICY "Solo admin ve admin_users" ON admin_users FOR SELECT USING (is_admin());
 
 -- ============================================================
