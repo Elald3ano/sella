@@ -56,10 +56,12 @@ export default function Scan() {
     if (!form.name.trim()) { setError('El nombre es obligatorio'); return; }
     if (cleanPhone.length < 7) { setError('Ingresá un número válido'); return; }
     setLoading(true); setError(''); setStampResult('');
-    const { data: cust, error: err } = await supabase.from('customers').upsert({ name: form.name.trim(), phone: cleanPhone, business_id: businessId, last_visit: new Date().toISOString() }, { onConflict: 'phone,business_id' }).select().single();
+    const { data: cust, error: err } = await supabase.rpc('register_customer', { p_name: form.name.trim(), p_phone: cleanPhone, p_business_id: businessId });
     if (err) { setError(err.message); setLoading(false); return; }
     localStorage.setItem(`sella_customer_${businessId}`, JSON.stringify(cust));
-    setStep('stamps'); loadStamps(cust.id); setLoading(false);
+    setStep('stamps'); loadStamps(cust.id);
+    if ((cust as any).returning) setStampResult(`👋 ¡Bienvenido de vuelta, ${(cust as any).name}!`);
+    setLoading(false);
   };
 
   const handleRegisterVisit = async () => {

@@ -361,3 +361,24 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Función: registrar cliente (bypass RLS)
+CREATE OR REPLACE FUNCTION register_customer(p_name text, p_phone text, p_business_id text)
+RETURNS json AS $$
+DECLARE
+  cust record;
+  existing record;
+BEGIN
+  SELECT * INTO existing FROM customers WHERE phone = p_phone AND business_id = p_business_id;
+  IF FOUND THEN
+    UPDATE customers SET last_visit = now() WHERE id = existing.id;
+    RETURN json_build_object('id', existing.id, 'name', existing.name, 'phone', existing.phone, 'returning', true);
+  END IF;
+
+  INSERT INTO customers (id, name, phone, business_id, last_visit, created_at)
+  VALUES (gen_random_uuid()::text, p_name, p_phone, p_business_id, now(), now())
+  RETURNING * INTO cust;
+
+  RETURN json_build_object('id', cust.id, 'name', cust.name, 'phone', cust.phone, 'returning', false);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
