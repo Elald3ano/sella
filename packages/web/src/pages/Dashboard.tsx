@@ -44,9 +44,17 @@ export default function Dashboard() {
   };
 
   const loadPending = async (bid: string) => {
-    const { data } = await supabase.from('stamp_requests').select('id,customerId,status,created_at,customer:customers!stamp_requests_customer_id_fkey(name,phone),program:programs!stamp_requests_program_id_fkey(id,title,target,reward)').eq('business_id', bid).eq('status', 'pending').order('created_at', { ascending: false });
-    const parsed = (data || []).map((r: any) => ({ ...r, customer: Array.isArray(r.customer) ? r.customer[0] : r.customer, program: Array.isArray(r.program) ? r.program[0] : r.program }));
-    setPendingRequests(parsed);
+    const { data, error } = await supabase.from('stamp_requests').select('id,customer_id,business_id,program_id,status,created_at').eq('business_id', bid).eq('status', 'pending').order('created_at', { ascending: false });
+    if (error) { console.error('[Dashboard] Error loading pending:', error); return; }
+    if (!data) { setPendingRequests([]); return; }
+    const enriched = await Promise.all((data || []).map(async (r: any) => {
+      const [custRes, progRes] = await Promise.all([
+        supabase.from('customers').select('name,phone').eq('id', r.customer_id).single(),
+        supabase.from('programs').select('id,title,target,reward').eq('id', r.program_id).single(),
+      ]);
+      return { ...r, customer: custRes.data || null, program: progRes.data || null };
+    }));
+    setPendingRequests(enriched);
   };
 
   const handleApprove = async (req: PendingRequest) => {
