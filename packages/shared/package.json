@@ -1,0 +1,20 @@
+{
+  "name": "@sella/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./supabase": "./src/supabase.ts",
+    "./PhoneInput": "./src/PhoneInput.tsx",
+    "./index.css": "./src/index.css"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.1"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "typescript": "^5.4.5"
+  }
+}

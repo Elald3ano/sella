@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@sella/shared/supabase';
 
 export default function Login() {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import PhoneInput from '../components/PhoneInput';
+import { supabase } from '@sella/shared/supabase';
+import PhoneInput from '@sella/shared/PhoneInput';
 
 const BUSINESS_TYPES = ['cafeteria', 'panaderia', 'jugueria', 'barberia', 'lavanderia', 'otro'] as const;
 
@@ -31,20 +31,25 @@ export default function Register() {
     setLoading(true);
     setError('');
 
-    const { error: authErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
-    if (authErr) { setError(authErr.message); setLoading(false); return; }
+    try {
+      const { error: authErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
+      if (authErr) throw new Error(authErr.message);
 
-    const { error: bizErr } = await supabase.rpc('register_business', {
-      p_name: form.name.trim(),
-      p_phone: cleanPhone,
-      p_type: form.type,
-      p_email: form.email,
-    });
+      const { error: bizErr } = await supabase.rpc('register_business', {
+        p_name: form.name.trim(),
+        p_phone: cleanPhone,
+        p_type: form.type,
+        p_email: form.email,
+      });
 
-    if (bizErr) { setError(bizErr.message); setLoading(false); return; }
+      if (bizErr) throw new Error(bizErr.message);
 
-    setStep(2);
-    setLoading(false);
+      setStep(2);
+    } catch (err: any) {
+      setError(err?.message || 'Error inesperado al crear la cuenta');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

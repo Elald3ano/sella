@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StampCard from '../components/StampCard';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@sella/shared/supabase';
 
 interface SavedCustomer { id: string; name: string; businessId: string; }
 

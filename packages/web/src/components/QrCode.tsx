@@ -6,7 +6,7 @@ interface Props { businessId: string; }
 export default function QrCode({ businessId }: Props) {
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [error, setError] = useState('');
-  const pwaUrl = 'http://localhost:5174';
+  const pwaUrl = import.meta.env.VITE_PWA_URL || 'http://localhost:5174';
 
   useEffect(() => {
     QRCode.toDataURL(`${pwaUrl}/s/${businessId}`, { width: 300, margin: 2, color: { dark: '#4338ca', light: '#ffffff' } })

@@ -1,28 +1,27 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@sella/shared/supabase';
+import { useAuth } from '../components/AuthProvider';
 
 interface Customer { id: string; name: string; phone: string; last_visit: string | null; }
 
 export default function Campaigns() {
+  const { businessId, loading } = useAuth();
   const [inactive, setInactive] = useState<Customer[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) return;
-      supabase.from('businesses').select('id,name').eq('user_id', data.session.user.id).single().then(({ data: bd }) => {
-        if (!bd) return;
-        const d = new Date(); d.setDate(d.getDate() - 15);
-        supabase.from('customers').select('id,name,phone,last_visit').eq('business_id', bd.id).lte('last_visit', d.toISOString()).then(({ data: cs }) => setInactive(cs || []));
-      });
-    });
-  }, []);
+    if (loading || !businessId) return;
+    const d = new Date(); d.setDate(d.getDate() - 15);
+    supabase.from('customers').select('id,name,phone,last_visit').eq('business_id', businessId).lte('last_visit', d.toISOString()).then(({ data: cs }) => setInactive(cs || []));
+  }, [businessId, loading]);
 
   const handleSend = async () => {
     setMsg(`[MOCK] Se enviarían ${selected.length} mensajes WhatsApp.`);
     setSelected([]);
   };
+
+  if (loading || !businessId) return null;
 
   return (
     <div>

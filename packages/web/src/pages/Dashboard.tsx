@@ -2,59 +2,61 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MetricCard from '../components/MetricCard';
 import QrCode from '../components/QrCode';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../components/AuthProvider';
+import { supabase } from '@sella/shared/supabase';
 
 interface Stats { totalCustomers: number; stampsThisMonth: number; redemptionsThisMonth: number; }
+
 interface PendingRequest {
-  id: string; customerId: string; status: string; created_at: string;
+  id: string;
+  customer_id: string;
+  business_id: string;
+  program_id: string | null;
+  status: string;
+  created_at: string;
   customer: { name: string; phone: string } | null;
-  program: { id: string; title: string; target: number; reward: string } | null;
+  program: { title: string; reward: string } | null;
 }
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [business, setBusiness] = useState<{ id?: string; name?: string } | null>(null);
+  const { businessId, businessName, loading } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [actionMsg, setActionMsg] = useState('');
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) { navigate('/login'); return; }
-      loadAll(data.session.user.id);
-    });
-  }, [navigate]);
+    if (loading) return;
+    if (!businessId) { navigate('/login'); return; }
+    loadAll();
+  }, [businessId, loading, navigate]);
 
-  const loadAll = async (userId: string) => {
-    const { data: biz } = await supabase.from('businesses').select('id,name').eq('user_id', userId).single();
-    if (!biz) { navigate('/login'); return; }
-    setBusiness(biz);
-
+  const loadAll = async () => {
+    if (!businessId) return;
     const now = new Date();
     const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const [{ count: customers }, { count: stamps }, { count: redemptions }] = await Promise.all([
-      supabase.from('customers').select('*', { count: 'exact', head: true }).eq('business_id', biz.id),
-      supabase.from('stamps').select('*', { count: 'exact', head: true }).eq('business_id', biz.id).gte('created_at', firstOfMonth),
-      supabase.from('redemptions').select('*, program!inner(*)', { count: 'exact', head: true }).eq('program.business_id', biz.id).gte('redeemed_at', firstOfMonth),
+      supabase.from('customers').select('*', { count: 'exact', head: true }).eq('business_id', businessId),
+      supabase.from('stamps').select('*', { count: 'exact', head: true }).eq('business_id', businessId).gte('created_at', firstOfMonth),
+      supabase.from('redemptions').select('*, program!inner(*)', { count: 'exact', head: true }).eq('program.business_id', businessId).gte('redeemed_at', firstOfMonth),
     ]);
     setStats({ totalCustomers: customers || 0, stampsThisMonth: stamps || 0, redemptionsThisMonth: redemptions || 0 });
 
-    loadPending(biz.id);
+    loadPending();
   };
 
-  const loadPending = async (bid: string) => {
-    const { data, error } = await supabase.from('stamp_requests').select('id,customer_id,business_id,program_id,status,created_at').eq('business_id', bid).eq('status', 'pending').order('created_at', { ascending: false });
+  const loadPending = async () => {
+    if (!businessId) return;
+    const { data, error } = await supabase
+      .from('stamp_requests')
+      .select('*, customer:customers(name, phone), program:programs(title, reward)')
+      .eq('business_id', businessId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
     if (error) { console.error('[Dashboard] Error loading pending:', error); return; }
-    if (!data) { setPendingRequests([]); return; }
-    const enriched = await Promise.all((data || []).map(async (r: any) => {
-      const [custRes, progRes] = await Promise.all([
-        supabase.from('customers').select('name,phone').eq('id', r.customer_id).single(),
-        supabase.from('programs').select('id,title,target,reward').eq('id', r.program_id).single(),
-      ]);
-      return { ...r, customer: custRes.data || null, program: progRes.data || null };
-    }));
-    setPendingRequests(enriched);
+    setPendingRequests((data as PendingRequest[]) || []);
   };
 
   const handleApprove = async (req: PendingRequest) => {
@@ -63,7 +65,7 @@ export default function Dashboard() {
     const { data, error } = await supabase.rpc('approve_stamp_request', { request_id: req.id });
     if (error) setActionMsg(error.message);
     else setActionMsg(data.completed ? `✅ ¡${data.customerName} completó ${data.target} sellos! Puede canjear: ${data.reward}` : `✅ Sello ${data.stampCount}/${data.target} para ${data.customerName}`);
-    loadPending(business!.id!);
+    loadPending();
     setProcessingIds((p) => { const n = new Set(p); n.delete(req.id); return n; });
   };
 
@@ -71,15 +73,15 @@ export default function Dashboard() {
     setProcessingIds((p) => new Set(p).add(req.id));
     await supabase.from('stamp_requests').update({ status: 'rejected' }).eq('id', req.id);
     setActionMsg(`❌ Solicitud de ${req.customer?.name || 'Cliente'} rechazada`);
-    loadPending(business!.id!);
+    loadPending();
     setProcessingIds((p) => { const n = new Set(p); n.delete(req.id); return n; });
   };
 
-  if (!business) return null;
+  if (loading || !businessId) return null;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Hola, {business.name}</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Hola, {businessName}</h1>
       <p className="text-gray-500 text-sm mb-6">Así va tu programa de fidelización este mes.</p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <MetricCard label="Clientes fidelizados" value={stats?.totalCustomers ?? 0} icon="👥" />
@@ -114,9 +116,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {business.id && (
+      {businessId && (
         <div className="grid md:grid-cols-2 gap-6">
-          <QrCode businessId={business.id} />
+          <QrCode businessId={businessId} />
           <div className="bg-white rounded-xl border border-gray-100 p-6">
             <h3 className="font-semibold text-gray-900 mb-4">Acciones rápidas</h3>
             <div className="space-y-3">

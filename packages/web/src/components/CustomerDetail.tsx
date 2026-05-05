@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@sella/shared/supabase';
 
 interface Props { customerId: string; onClose: () => void; }
 

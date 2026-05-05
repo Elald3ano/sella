@@ -71,11 +71,11 @@ CREATE POLICY "Dueño actualiza su negocio" ON businesses FOR UPDATE USING (user
 DROP POLICY IF EXISTS "Registro público" ON businesses;
 CREATE POLICY "Registro público" ON businesses FOR INSERT WITH CHECK (true);
 
--- programs: admin ve todos, dueño los suyos
+-- programs: visibles para todos (público), modificables solo por dueño
 DROP POLICY IF EXISTS "Admin ve todos los programas" ON programs;
-CREATE POLICY "Admin ve todos los programas" ON programs FOR SELECT USING (is_admin());
 DROP POLICY IF EXISTS "Dueño ve sus programas" ON programs;
-CREATE POLICY "Dueño ve sus programas" ON programs FOR SELECT USING (is_business_owner(business_id::text));
+DROP POLICY IF EXISTS "Programas visibles para todos" ON programs;
+CREATE POLICY "Programas visibles para todos" ON programs FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Dueño crea programas" ON programs;
 CREATE POLICY "Dueño crea programas" ON programs FOR INSERT WITH CHECK (is_business_owner(business_id::text));
 DROP POLICY IF EXISTS "Dueño actualiza programas" ON programs;

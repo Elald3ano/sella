@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import BusinessInfo from '../components/BusinessInfo';
 import StampCard from '../components/StampCard';
-import PhoneInput from '../components/PhoneInput';
-import { supabase } from '../lib/supabase';
+import PhoneInput from '@sella/shared/PhoneInput';
+import { supabase } from '@sella/shared/supabase';
 
 type Step = 'welcome' | 'login' | 'register' | 'stamps';
 
@@ -16,27 +16,31 @@ export default function Scan() {
   const [error, setError] = useState('');
   const [data, setData] = useState<any>(null);
   const [stamping, setStamping] = useState(false);
-  const [stampResult, setStampResult] = useState('');
+  const [stampResult, setStampResult] = useState<{ message: string; type: 'success' | 'warning' } | null>(null);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [programsLoading, setProgramsLoading] = useState(false);
   const [selectedProgramId, setSelectedProgramId] = useState('');
+
+  const loadPrograms = async (bid: string) => {
+    setProgramsLoading(true);
+    const { data: progs } = await supabase.from('programs').select('*').eq('business_id', bid).eq('active', true);
+    setPrograms(progs || []);
+    if (progs?.length === 1) setSelectedProgramId(progs[0].id);
+    setProgramsLoading(false);
+  };
 
   useEffect(() => {
     if (!businessId) return;
+    loadPrograms(businessId);
     const stored = localStorage.getItem(`sella_customer_${businessId}`);
     if (stored) { setStep('stamps'); loadStamps(JSON.parse(stored).id); }
   }, [businessId]);
 
   const loadStamps = async (cid: string) => {
     const { data: d, error: err } = await supabase.rpc('customer_history', { cust_id: cid });
-    if (!err && d) { setData(d); if (d.customer?.business?.id) loadPrograms(d.customer.business.id); }
+    if (!err && d) { setData(d); if (businessId) loadPrograms(businessId); }
     else setError('No se pudieron cargar tus sellos.');
-  };
-
-  const loadPrograms = async (bid: string) => {
-    const { data: progs } = await supabase.from('programs').select('*').eq('business_id', bid).eq('active', true);
-    setPrograms(progs || []);
-    if (progs?.length === 1) setSelectedProgramId(progs[0].id);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -47,7 +51,7 @@ export default function Scan() {
     const { data: cust } = await supabase.from('customers').select('id,name').eq('phone', cleanPhone).eq('business_id', businessId).single();
     if (!cust) { setError('No encontramos una cuenta con ese número'); setLoading(false); return; }
     localStorage.setItem(`sella_customer_${businessId}`, JSON.stringify(cust));
-    setStep('stamps'); setStampResult(`👋 ¡Hola de nuevo, ${cust.name}!`); loadStamps(cust.id); setLoading(false);
+    setStep('stamps'); setStampResult({ message: `👋 ¡Hola de nuevo, ${cust.name}!`, type: 'success' }); loadStamps(cust.id); setLoading(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -55,30 +59,32 @@ export default function Scan() {
     const cleanPhone = form.phone.replace(/\D/g, '');
     if (!form.name.trim()) { setError('El nombre es obligatorio'); return; }
     if (cleanPhone.length < 7) { setError('Ingresá un número válido'); return; }
-    setLoading(true); setError(''); setStampResult('');
+    setLoading(true); setError(''); setStampResult(null);
     const { data: cust, error: err } = await supabase.rpc('register_customer', { p_name: form.name.trim(), p_phone: cleanPhone, p_business_id: businessId });
     if (err) { setError(err.message); setLoading(false); return; }
     localStorage.setItem(`sella_customer_${businessId}`, JSON.stringify(cust));
     setStep('stamps'); loadStamps(cust.id);
-    if ((cust as any).returning) setStampResult(`👋 ¡Bienvenido de vuelta, ${(cust as any).name}!`);
+    if ((cust as any).returning) setStampResult({ message: `👋 ¡Bienvenido de vuelta, ${(cust as any).name}!`, type: 'success' });
     setLoading(false);
   };
 
   const handleRegisterVisit = async () => {
     if (!businessId || !data?.customer?.id) return;
-    setStamping(true); setStampResult(''); setError('');
+    setStamping(true); setStampResult(null); setError('');
     const body: any = { customer_id: data.customer.id, business_id: businessId };
     if (selectedProgramId) body.program_id = selectedProgramId;
-    const { error: err } = await supabase.from('stamp_requests').insert(body);
-    if (err) { if (err.code === '23505' || err.message.includes('duplicate')) { setStampResult('Ya enviaste una solicitud. El comercio debe aprobarla primero.'); setHasPendingRequest(true); } else setError(err.message); }
-    else { setStampResult('✅ Solicitud enviada. El comercio la revisará y aprobará tu sello.'); setHasPendingRequest(true); }
+    const { data: rpcData, error: err } = await supabase.rpc('create_stamp_request', { p_customer_id: body.customer_id, p_business_id: body.business_id, p_program_id: body.program_id });
+    if (err) setError(err.message);
+    else if (rpcData?.status === 'cooldown') { setStampResult({ message: 'Ya has solicitado un sello recientemente. Por favor, espera unos minutos antes de volver a intentarlo.', type: 'warning' }); setHasPendingRequest(true); }
+    else if (rpcData?.error) { if ((rpcData as any).duplicate) { setStampResult({ message: 'Ya enviaste una solicitud. El comercio debe aprobarla primero.', type: 'warning' }); setHasPendingRequest(true); } else setError(rpcData.error); }
+    else { setStampResult({ message: '✅ Solicitud enviada. El comercio la revisará y aprobará tu sello.', type: 'success' }); setHasPendingRequest(true); }
     setStamping(false);
   };
 
   const goToWelcome = () => {
     if (businessId) localStorage.removeItem(`sella_customer_${businessId}`);
-    setStep('welcome'); setData(null); setError(''); setStampResult(''); setHasPendingRequest(false);
-    setForm({ name: '', phone: '' }); setPrograms([]); setSelectedProgramId('');
+    setStep('welcome'); setData(null); setError(''); setStampResult(null); setHasPendingRequest(false);
+    setForm({ name: '', phone: '' }); setPrograms([]); setSelectedProgramId(''); setProgramsLoading(false);
   };
 
   const programCounts = data?.stats ? [{ programId: '1', count: data.stats.totalStamps }] : [];
@@ -125,14 +131,22 @@ export default function Scan() {
             <div className="space-y-6">
               <BusinessInfo name={data.customer?.business?.name || 'Negocio'} businessId={businessId || ''} />
               {data.stats.totalStamps === 0 && !data.stamps?.length && <div className="text-center py-10"><p className="text-gray-400">Aún no tenés sellos en este negocio.</p></div>}
-              {stampResult && <div className="bg-green-50 text-green-700 text-sm p-4 rounded-xl text-center font-medium">{stampResult}</div>}
+              {stampResult && <div className={`text-sm p-4 rounded-xl text-center font-medium ${stampResult.type === 'warning' ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>{stampResult.message}</div>}
+
+              {!programsLoading && programs.length === 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                  <p className="text-amber-800 text-sm font-medium">Este comercio aún no tiene programas de recompensas activos. Vuelve pronto.</p>
+                </div>
+              )}
+
               {programs.length > 1 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1.5">¿Qué compraste hoy?</label>
                   <div className="grid grid-cols-2 gap-2">{programs.map(p => <button key={p.id} type="button" onClick={() => setSelectedProgramId(p.id)} className={`px-3 py-2.5 rounded-xl text-sm font-medium border transition-colors ${selectedProgramId===p.id?'border-primary-500 bg-primary-50 text-primary-700':'border-gray-200 bg-white text-gray-600 hover:border-gray-300'}`}>{p.title}</button>)}</div>
                 </div>
               )}
-              <button onClick={handleRegisterVisit} disabled={stamping || hasPendingRequest} className={`w-full py-3.5 rounded-xl font-semibold text-base transition-colors disabled:opacity-50 shadow-lg ${hasPendingRequest?'bg-amber-100 text-amber-700':'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-200'}`}>{stamping?'Enviando...':hasPendingRequest?'⏳ Esperando aprobación':'⭐ Registrar visita'}</button>
+
+              <button onClick={handleRegisterVisit} disabled={stamping || hasPendingRequest || (!programsLoading && programs.length === 0)} className={`w-full py-3.5 rounded-xl font-semibold text-base transition-colors disabled:opacity-50 shadow-lg ${hasPendingRequest?'bg-amber-100 text-amber-700':(!programsLoading && programs.length === 0)?'bg-gray-200 text-gray-400':'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-200'}`}>{stamping?'Enviando...':hasPendingRequest?'⏳ Esperando aprobación':(!programsLoading && programs.length === 0)?'🚫 Sin programas activos':'⭐ Registrar visita'}</button>
               <div className="text-center pt-4 border-t border-gray-100">
                 <p className="text-xs text-gray-400 mb-2">Eres <span className="font-medium text-gray-600">{data.customer?.name}</span></p>
                 <button onClick={goToWelcome} className="text-xs text-gray-400 hover:text-red-500 underline">No soy yo, usar otra cuenta</button>

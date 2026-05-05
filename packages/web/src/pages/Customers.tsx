@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@sella/shared/supabase';
+import { useAuth } from '../components/AuthProvider';
 import CustomerDetail from '../components/CustomerDetail';
 
 interface Customer {
@@ -11,25 +12,19 @@ interface Program {
 }
 
 export default function Customers() {
+  const { businessId, loading } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [actionMsg, setActionMsg] = useState('');
-  const [businessId, setBusinessId] = useState('');
   const [selectedProgramId, setSelectedProgramId] = useState('');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) return;
-      supabase.from('businesses').select('id').eq('user_id', data.session.user.id).single().then(({ data: bd }) => {
-        if (!bd) return;
-        setBusinessId(bd.id);
-        loadCustomers(bd.id);
-        loadPrograms(bd.id);
-      });
-    });
-  }, []);
+    if (loading || !businessId) return;
+    loadCustomers(businessId);
+    loadPrograms(businessId);
+  }, [businessId, loading]);
 
   const loadCustomers = async (bid: string) => {
     let q = supabase.from('customers').select('*').eq('business_id', bid).order('last_visit', { ascending: false, nullsFirst: false });
@@ -49,7 +44,7 @@ export default function Customers() {
 
   const handleStamp = async (c: Customer) => {
     const pid = programs.length === 1 ? programs[0].id : selectedProgramId;
-    if (!pid) return;
+    if (!pid || !businessId) return;
     const { error } = await supabase.from('stamps').insert({ customer_id: c.id, business_id: c.business_id, program_id: pid });
     if (error) setActionMsg(error.message);
     else { setActionMsg(`¡Sello para ${c.name}!`); loadCustomers(businessId); }
@@ -57,7 +52,7 @@ export default function Customers() {
 
   const handleRedeem = async (c: Customer) => {
     const pid = programs.length === 1 ? programs[0].id : selectedProgramId;
-    if (!pid) return;
+    if (!pid || !businessId) return;
     const { data, error } = await supabase.rpc('redeem', { customer_id: c.id, program_id: pid });
     if (error) setActionMsg(error.message);
     else if ((data as any).error) setActionMsg((data as any).error);
@@ -69,6 +64,8 @@ export default function Customers() {
     const days = Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24));
     return days === 0 ? 'Hoy' : days === 1 ? 'Ayer' : `Hace ${days} días`;
   };
+
+  if (loading || !businessId) return null;
 
   return (
     <div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@sella/shared/supabase';
 
 interface BizRow { id: string; name: string; phone: string; type: string; plan: string; active: boolean; created_at: string; subscription: any; }
 interface Stats { businessesCount: number; customersCount: number; stampsCount: number; byPlan: Record<string,number>; trialEnding: number; }
